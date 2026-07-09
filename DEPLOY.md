@@ -1,146 +1,229 @@
 # 腾讯云轻量服务器部署指南（考研打卡）
 
-这份指南将带你把整个项目部署到腾讯云轻量应用服务器，让同学可以通过公网 IP 直接访问。
+这份指南记录了整个项目**实际部署到腾讯云**的完整流程，包括踩过的坑和解决方案。
+
+> **环境说明**
+> - 服务器：腾讯云轻量应用服务器，2核2G4M
+> - 系统：Ubuntu 22.04 LTS（**必须选这个，不要选 Windows 镜像**）
+> - 项目：Next.js 16 + React 19 + Prisma + SQLite
+> - 部署方式：GitHub + PM2 + Nginx 反向代理
 
 ---
 
-## 一、购买服务器
+## 一、购买并初始化服务器
 
 1. 打开 [腾讯云控制台](https://console.cloud.tencent.com/)，搜索「轻量应用服务器」
-2. 点击「新建」，选择以下配置：
+2. 点击「新建」，选择：
    - **地域**：上海 / 北京 / 广州（选离你同学最近的）
-   - **镜像**：**Ubuntu 22.04 LTS**（64位）
-   - **套餐**：2核2G4M
+   - **镜像**：**Ubuntu 22.04 LTS**（64位）⚠️ **不要选 Windows 镜像**
+   - **套餐**：2核2G4M（新用户首单约 50-100 元/年）
    - **时长**：1年
-3. 点击购买，等待服务器创建完成（约1-2分钟）
-4. 创建完成后，进入服务器控制台，找到：
-   - **公网 IP**（例如 `123.123.123.123`）
-   - 点击「重置密码」，设置 root 密码
+3. 购买完成后，进入控制台：
+   - 记录 **公网 IP**（如 `101.33.247.111`）
+   - 点击「重置密码」，设置一个强密码
 
 ---
 
 ## 二、连接服务器
 
-### Windows 用户
-打开 PowerShell 或 CMD，输入：
-```bash
-ssh ubuntu@你的公网IP
-```
-例如：`ssh ubuntu@123.123.123.123`
+> ⚠️ **注意**：腾讯云 Ubuntu 镜像的默认用户名是 `ubuntu`，不是 `root`。
 
-输入你重装系统时设置的密码。
-
-### Mac/Linux 用户
-打开终端，同样的命令：
 ```bash
+# Windows 用户打开 PowerShell，Mac/Linux 打开终端
 ssh ubuntu@你的公网IP
+# 例如：ssh ubuntu@101.33.247.111
+
+# 输入你重置密码时设置的密码（输入时不显示，直接回车）
 ```
+
+**如果连接超时：**
+1. 进入 [腾讯云轻量服务器控制台](https://console.cloud.tencent.com/lighthouse/instance)
+2. 找到你的服务器 → 「防火墙」
+3. 添加规则：**TCP 端口 22**，来源 `0.0.0.0/0`，策略允许
+4. 等待 1-2 分钟后重试
 
 ---
 
-## 三、安装环境
+## 三、安装环境（含踩坑记录）
 
-连接成功后，依次执行下面的命令（直接复制粘贴）。
+连接成功后，**先切换到 root 权限**（方便后续操作）：
 
-### 1. 更新系统包
+```bash
+sudo -i
+```
+
+### 1. 更新系统
+
 ```bash
 apt update && apt upgrade -y
 ```
 
+**常见问题：apt 锁被占用**
+
+如果提示 `Waiting for cache lock: Could not get lock /var/lib/dpkg/lock-frontend`，说明后台有 apt 进程在跑：
+
+```bash
+# 找到占用进程并结束它
+kill 进程ID
+rm -f /var/lib/dpkg/lock-frontend
+rm -f /var/lib/apt/lists/lock
+rm -f /var/cache/apt/archives/lock
+dpkg --configure -a
+apt update
+```
+
 ### 2. 安装 Node.js 20.x
+
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs
+apt-get install -y nodejs
 ```
 
-验证安装：
+验证：
 ```bash
-node -v   # 应显示 v20.x.x
-npm -v    # 应显示 10.x.x
+node -v   # v20.x.x
+npm -v    # 10.x.x
 ```
 
-### 3. 安装 Git
+### 3. 安装 Git、Nginx
+
 ```bash
-apt install -y git
+apt install -y git nginx
 ```
 
-### 4. 安装 PM2（进程守护）
+**常见问题：debconf 锁导致 nginx 安装失败**
+
+如果安装 nginx 时报错 `debconf: DbDriver "config": /var/cache/debconf/config.dat is locked`：
+
+```bash
+fuser -k /var/cache/debconf/config.dat 2>/dev/null
+rm -f /var/cache/debconf/config.dat.lock
+dpkg --configure -a
+apt install -f -y
+apt install -y nginx
+```
+
+### 4. 安装 PM2
+
 ```bash
 npm install -g pm2
 ```
 
-### 5. 安装 Nginx（反向代理）
+---
+
+## 四、把代码推到 GitHub
+
+**在本地电脑（Windows）上操作：**
+
 ```bash
-apt install -y nginx
+cd D:\aazhj\aaa\kaoyan
+
+# 确认 .gitignore 排除了 dev.db 和 .env
+git add .
+git commit -m "deploy: init"
+
+# 如果没有远程仓库，先在 GitHub 新建一个空仓库（不要勾选 README）
+# 然后绑定并推送
+git remote add origin https://github.com/你的用户名/kaoyan.git
+git branch -M master
+git push -u origin master
+```
+
+> **注意**：GitHub 从 2021 年起不再支持密码登录，推送时会要求输入 **Personal Access Token**（PAT）。
+> - 生成地址：[https://github.com/settings/tokens](https://github.com/settings/tokens)
+> - 勾选 `repo` 权限，复制生成的 `ghp_xxxx...` 作为密码粘贴
+
+---
+
+## 五、在服务器上部署代码
+
+```bash
+cd /var/www
+git clone https://github.com/你的用户名/kaoyan.git kaoyan
+cd kaoyan
+```
+
+**常见问题：国内服务器访问 GitHub 不稳定**
+
+如果 `git clone` 或 `git pull` 报 `GnuTLS recv error`：
+
+```bash
+git config --global http.version HTTP/1.1
+# 然后重试 git clone / git pull
 ```
 
 ---
 
-## 四、部署项目代码
-
-### 1. 把代码传到 GitHub（如果你还没做）
-
-在你的本地项目目录（Windows PowerShell / VS Code 终端）：
-```bash
-git add .
-git commit -m "准备部署"
-# 如果你还没有远程仓库，先在 GitHub 新建一个空仓库，然后：
-git remote add origin https://github.com/你的用户名/仓库名.git
-git branch -M main
-git push -u origin main
-```
-
-### 2. 在服务器上拉取代码
-
-```bash
-cd /var/www
-git clone https://github.com/你的用户名/仓库名.git kaoyan
-cd kaoyan
-```
-
-### 3. 安装依赖
+## 六、安装依赖并配置数据库
 
 ```bash
 npm install
 ```
 
-### 4. 初始化数据库
+### 1. 创建 .env 文件
 
 ```bash
-npx prisma migrate deploy
+echo 'DATABASE_URL="file:./dev.db"' > .env
 ```
 
-这会根据 `prisma/schema.prisma` 自动创建 SQLite 数据库文件。
+> **重要**：`.env` 文件在 `.gitignore` 中，不会从 GitHub 拉下来，必须在服务器上手动创建。
 
-### 5. 构建项目
+### 2. 初始化数据库迁移
+
+```bash
+npx prisma migrate dev --name init
+```
+
+> 第一次部署时**没有迁移文件**，所以用 `migrate dev` 创建并应用。后续更新可以用 `migrate deploy`。
+
+### 3. 生成 Prisma Client
+
+```bash
+npx prisma generate
+```
+
+> **必须执行**，否则构建时会报错 `Module not found: Can't resolve '@/app/generated/prisma/client'`。
+
+---
+
+## 七、构建项目
 
 ```bash
 npm run build
 ```
 
-构建成功后会显示 `□ Collecting page data ...` 等输出，最终提示成功。
+**常见问题：构建失败**
+
+如果构建报错，先清理缓存再重新构建：
+
+```bash
+rm -rf .next
+npm run build
+```
+
+构建成功后会显示类似输出：
+```
+✓ Compiled successfully in 5.6s
+✓ Finished TypeScript in 4.2s
+✓ Collecting page data ...
+✓ Generating static pages ...
+```
 
 ---
 
-## 五、启动项目
-
-### 1. 用 PM2 启动
+## 八、启动并守护进程
 
 ```bash
+# 启动
 pm2 start npm --name "kaoyan" -- run start
+
+# 查看日志（确认启动成功）
+pm2 logs kaoyan --lines 20
 ```
 
-### 2. 查看运行状态
+看到 `ready on http://localhost:3000` 表示启动成功。
 
-```bash
-pm2 status
-pm2 logs kaoyan
-```
-
-看到 `ready on http://localhost:3000` 就表示启动成功了。
-
-### 3. 设置开机自启
-
+**设置开机自启：**
 ```bash
 pm2 startup
 pm2 save
@@ -148,42 +231,13 @@ pm2 save
 
 ---
 
-## 六、配置防火墙（关键步骤）
+## 九、配置 Nginx 反向代理
 
-### 1. 腾讯云控制台配置（安全组/防火墙）
-
-1. 回到 [腾讯云轻量服务器控制台](https://console.cloud.tencent.com/lighthouse/instance)
-2. 找到你的服务器，点击「防火墙」或「安全组」
-3. 点击「添加规则」：
-   - **协议**：TCP
-   - **端口**：`80`（HTTP）、`443`（HTTPS，可选）、`3000`（如果你不想用 Nginx，直接暴露3000端口）
-   - **来源**：`0.0.0.0/0`（允许所有IP）
-   - **策略**：允许
-
-### 2. 服务器本地防火墙（ufw）
+这样同学可以直接用 `http://你的IP` 访问，不需要加端口号。
 
 ```bash
-ufw allow 80/tcp
-ufw allow 443/tcp
-ufw allow 22/tcp    # SSH，保持开启
-ufw enable
-```
-
----
-
-## 七、配置 Nginx 反向代理（推荐）
-
-这样同学可以直接用 `http://你的IP` 访问，不用加 `:3000` 端口号。
-
-### 1. 创建 Nginx 配置文件
-
-```bash
-nano /etc/nginx/sites-available/kaoyan
-```
-
-粘贴以下内容（把 `你的公网IP` 替换成实际IP，例如 `123.123.123.123`）：
-
-```nginx
+# 创建配置文件
+cat > /etc/nginx/sites-available/kaoyan << 'EOF'
 server {
     listen 80;
     server_name 你的公网IP;
@@ -200,112 +254,139 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 }
-```
+EOF
 
-按 `Ctrl+O` 保存，`Ctrl+X` 退出。
-
-### 2. 启用配置
-
-```bash
-ln -s /etc/nginx/sites-available/kaoyan /etc/nginx/sites-enabled/
-nginx -t          # 检查配置是否正确
+# 启用配置
+ln -sf /etc/nginx/sites-available/kaoyan /etc/nginx/sites-enabled/
+nginx -t
 systemctl restart nginx
 ```
 
-### 3. 验证
-
-在浏览器访问：`http://你的公网IP`
-
-应该能看到你的考研打卡网站首页了！
+> 把 `你的公网IP` 替换成实际 IP，如 `101.33.247.111`。
 
 ---
 
-## 八、后续维护常用命令
+## 十、配置防火墙（关键步骤，最容易遗漏）
 
-### 更新代码（本地修改后推送到 GitHub，服务器拉取更新）
+### 1. 腾讯云控制台防火墙
+
+1. 打开 [腾讯云轻量服务器控制台](https://console.cloud.tencent.com/lighthouse/instance)
+2. 找到你的服务器 → 「防火墙」
+3. 添加以下规则：
+
+| 协议 | 端口 | 来源 | 策略 |
+|------|------|------|------|
+| TCP | 80 | `0.0.0.0/0` | 允许 |
+| TCP | 22 | `0.0.0.0/0` | 允许 |
+
+### 2. 服务器本地防火墙
+
+```bash
+ufw allow 80/tcp
+ufw allow 22/tcp
+ufw enable
+```
+
+---
+
+## 十一、验证部署
+
+在浏览器打开：`http://你的公网IP`
+
+应该能看到考研打卡网站首页。
+
+---
+
+## 十二、后续更新代码
+
+**本地修改后：**
+
+```bash
+cd D:\aazhj\aaa\kaoyan
+git add .
+git commit -m "update: xxx"
+git push origin master
+```
+
+**服务器上拉取更新：**
+
 ```bash
 cd /var/www/kaoyan
-git pull origin main
-npm install          # 如果有新依赖
-npm run build        # 重新构建
-pm2 restart kaoyan   # 重启服务
-```
+git pull origin master
 
-### 查看日志
-```bash
-pm2 logs kaoyan
-pm2 logs kaoyan --lines 100   # 最近100行
-```
+# 如果有新依赖
+npm install
 
-### 重启/停止/删除服务
-```bash
-pm2 restart kaoyan
-pm2 stop kaoyan
+# 如果有数据库迁移变更
+npx prisma migrate deploy
+
+# 重新生成 Prisma Client（如果 schema 有变）
+npx prisma generate
+
+# 清理缓存并重新构建
+rm -rf .next
+npm run build
+
+# 彻底重启（确保加载新代码）
 pm2 delete kaoyan
-```
-
-### 服务器资源监控
-```bash
-pm2 monit            # PM2 监控面板
-htop                 # 系统资源（需安装：apt install htop）
+pm2 start npm --name "kaoyan" -- run start
 ```
 
 ---
 
-## 九、进阶：绑定域名（可选）
-
-如果你想让同学用域名访问（如 `kaoyan.xxx.com`），需要：
-
-1. **购买域名**：阿里云/腾讯云/GoDaddy 等，`.cn` 域名约 30 元/年
-2. **域名解析**：在域名控制台添加 A 记录，指向你的服务器公网 IP
-3. **ICP 备案**：域名 + 国内服务器必须备案（腾讯云有免费备案服务，约7-20天）
-4. **HTTPS 证书**（可选）：用 Certbot 免费申请 Let's Encrypt 证书
-
-> 💡 **提示**：如果你只是同班同学使用，直接用 IP 访问最快，不需要备案和域名。
-
----
-
-## 十、常见问题
+## 十三、常见问题与排查
 
 ### Q1: 访问 IP 显示「无法访问此网站」
-- 检查 PM2 是否在运行：`pm2 status`
-- 检查 Nginx 是否运行：`systemctl status nginx`
-- 检查腾讯云防火墙是否放行了 80 端口
-- 检查 `npm run build` 是否成功（是否有报错）
+- `pm2 status` — 检查 Node 服务是否运行
+- `systemctl status nginx` — 检查 Nginx 是否运行
+- 检查腾讯云控制台防火墙是否放行了 80 端口
+- `ufw status` — 检查服务器本地防火墙
 
-### Q2: `npm run build` 失败
-- 检查 Node.js 版本是否 ≥ 18：`node -v`
-- 检查是否有足够的内存（2G 内存足够，但构建时可能紧张）
-- 可以尝试增加 swap 空间：
-  ```bash
-  fallocate -l 2G /swapfile
-  chmod 600 /swapfile
-  mkswap /swapfile
-  swapon /swapfile
-  ```
+### Q2: 构建时内存不足（2G 服务器可能遇到）
+```bash
+# 增加 swap 空间
+fallocate -l 2G /swapfile
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+```
 
-### Q3: 如何修改 JWT 密钥？
-在服务器上：
+### Q3: 登录成功但页面不跳转
+- 首先确认**地址栏是否从 `/login` 变成了 `/`**
+- 如果地址栏变了但页面没变化 → 浏览器缓存问题，按 `Ctrl+Shift+R` 强制刷新
+- 如果地址栏没变 → 检查浏览器 Console 是否有报错，或尝试换浏览器/禁用扩展
+
+### Q4: 如何修改 JWT 密钥？
 ```bash
 cd /var/www/kaoyan
 nano .env
-```
-添加：
-```env
-JWT_SECRET=你的随机密钥字符串
-```
-然后重启：
-```bash
+# 添加：JWT_SECRET=你的随机密钥字符串
 pm2 restart kaoyan
 ```
 
-### Q4: 数据库文件在哪里？
+### Q5: 数据库文件备份
 ```bash
-ls /var/www/kaoyan/dev.db
-```
-这是 SQLite 数据库文件，**建议定期备份**：
-```bash
+# SQLite 数据库文件在 /var/www/kaoyan/dev.db
 cp /var/www/kaoyan/dev.db /var/www/kaoyan/dev.db.backup.$(date +%F)
+```
+
+### Q6: 服务器常用运维命令
+```bash
+# 查看实时日志
+pm2 logs kaoyan --lines 100
+
+# 查看 PM2 监控面板
+pm2 monit
+
+# 查看系统资源
+apt install -y htop
+htop
+
+# 查看 Nginx 访问日志
+tail -f /var/log/nginx/access.log
+
+# 查看 Nginx 错误日志
+tail -f /var/log/nginx/error.log
 ```
 
 ---
