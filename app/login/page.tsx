@@ -30,8 +30,9 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/");
-      router.refresh();
+      alert("Login OK, redirecting...");
+      window.location.href = "/";
+      return;
     } catch {
       setError("网络错误，请稍后重试");
     } finally {
