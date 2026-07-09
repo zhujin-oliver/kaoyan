@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import { apiError, apiSuccess } from "@/lib/api-utils";
 
 interface UserRanking {
@@ -10,6 +11,8 @@ interface UserRanking {
 
 export async function GET() {
   try {
+    const user = await getCurrentUser();
+    if (!user) return apiError("请先登录", 401);
     const users = await prisma.user.findMany({
       select: {
         id: true,

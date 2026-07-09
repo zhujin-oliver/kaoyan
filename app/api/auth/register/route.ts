@@ -27,6 +27,12 @@ export async function POST(request: NextRequest) {
       return apiError("该邮箱已被注册", 409);
     }
 
+    // Check if name already exists
+    const existingName = await prisma.user.findUnique({ where: { name } });
+    if (existingName) {
+      return apiError("该昵称已被使用", 409);
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
