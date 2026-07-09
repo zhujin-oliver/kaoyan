@@ -31,6 +31,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const navLinks = [
     { href: "/", label: "今日计划" },
+    { href: "/ranking", label: "排行榜" },
     { href: "/plans", label: "我的计划" },
     { href: "/analytics", label: "复盘分析" },
   ];
