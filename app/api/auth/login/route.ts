@@ -36,8 +36,9 @@ export async function POST(request: NextRequest) {
     // Sign JWT
     const token = await signToken({ userId: user.id, email: user.email });
 
-    // Set cookie
-    await setAuthCookie(token);
+    // Set cookie — only use Secure flag when behind HTTPS
+    const secure = request.headers.get("x-forwarded-proto") === "https";
+    await setAuthCookie(token, secure);
 
     return apiSuccess({
       message: "登录成功",

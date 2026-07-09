@@ -351,10 +351,18 @@ mkswap /swapfile
 swapon /swapfile
 ```
 
-### Q3: 登录成功但页面不跳转
-- 首先确认**地址栏是否从 `/login` 变成了 `/`**
-- 如果地址栏变了但页面没变化 → 浏览器缓存问题，按 `Ctrl+Shift+R` 强制刷新
-- 如果地址栏没变 → 检查浏览器 Console 是否有报错，或尝试换浏览器/禁用扩展
+### Q3: 登录成功但页面不跳转 / 登录后仍然未登录
+
+**已修复（v0.1.1）**：如果已拉取最新代码，此问题不会再出现。
+
+**原因**：在 HTTP 环境下，`Secure` cookie 标记会导致浏览器拒绝存储认证 cookie（浏览器只会在 HTTPS 下接受 Secure cookie）。旧代码在 `NODE_ENV=production` 时自动启用 Secure 标记，但服务器通过 HTTP 访问（没有配置 HTTPS 证书），导致 cookie 被浏览器丢弃，登录状态无法保持。
+
+**修复方式**：`lib/auth.ts` 改为根据请求的实际协议（`x-forwarded-proto` 头）动态判断是否启用 Secure 标记，而不是简单检查 `NODE_ENV`。HTTP 访问时不再设置 Secure 标记。
+
+**临时排查（旧版本）**：
+- 打开浏览器开发者工具 → Console 查看是否有报错
+- Application → Cookies 查看 `kaoyan-token` 是否存在
+- 如果 cookie 不存在，说明就是此问题，拉取最新代码重新部署即可
 
 ### Q4: 如何修改 JWT 密钥？
 ```bash

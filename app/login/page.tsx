@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -30,9 +28,7 @@ export default function LoginPage() {
         return;
       }
 
-      alert("Login OK, redirecting...");
       window.location.href = "/";
-      return;
     } catch {
       setError("网络错误，请稍后重试");
     } finally {

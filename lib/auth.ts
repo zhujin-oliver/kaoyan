@@ -25,22 +25,22 @@ export async function verifyToken(token: string) {
   }
 }
 
-export async function setAuthCookie(token: string) {
+export async function setAuthCookie(token: string, secure = false) {
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure,
     sameSite: "lax",
     maxAge: 7 * 24 * 60 * 60, // 7 days
     path: "/",
   });
 }
 
-export async function clearAuthCookie() {
+export async function clearAuthCookie(secure = false) {
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, "", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure,
     sameSite: "lax",
     maxAge: 0,
     path: "/",
