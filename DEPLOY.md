@@ -312,6 +312,10 @@ git push origin master
 
 ```bash
 cd /var/www/kaoyan
+
+# 如果提示 "detected dubious ownership"，先执行下面这行（因为可能用不同用户 clone 的）：
+git config --global --add safe.directory /var/www/kaoyan
+
 git pull origin master
 
 # 如果有新依赖
@@ -378,7 +382,17 @@ pm2 restart kaoyan
 cp /var/www/kaoyan/dev.db /var/www/kaoyan/dev.db.backup.$(date +%F)
 ```
 
-### Q6: 服务器常用运维命令
+### Q6: 用户忘记密码怎么重置？
+
+```bash
+cd /var/www/kaoyan
+npx tsx scripts/reset-password.ts "用户邮箱" "新密码"
+# 示例：npx tsx scripts/reset-password.ts "zhangsan@example.com" "abc123456"
+```
+
+然后把新密码发给用户，让他登录后自行修改密码。
+
+### Q7: 服务器常用运维命令
 ```bash
 # 查看实时日志
 pm2 logs kaoyan --lines 100
