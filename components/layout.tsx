@@ -8,6 +8,7 @@ interface User {
   id: number;
   name: string;
   email: string;
+  isAdmin?: boolean;
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -36,6 +37,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { href: "/analytics", label: "复盘分析" },
   ];
 
+  const adminLinks = [
+    { href: "/admin", label: "⚙️ 管理" },
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-10">
@@ -52,6 +57,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                     pathname === link.href
                       ? "bg-blue-50 text-blue-700"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+              {user?.isAdmin && adminLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    pathname === link.href
+                      ? "bg-amber-50 text-amber-700"
                       : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                   }`}
                 >
@@ -85,6 +103,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               className={`flex-1 text-center py-2 text-xs font-medium ${
                 pathname === link.href
                   ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-500"
+              }`}
+            >
+              {link.label}
+            </Link>
+          ))}
+          {user?.isAdmin && adminLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`flex-1 text-center py-2 text-xs font-medium ${
+                pathname === link.href
+                  ? "text-amber-600 border-b-2 border-amber-600"
                   : "text-gray-500"
               }`}
             >
