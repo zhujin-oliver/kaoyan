@@ -476,18 +476,22 @@ export default function AdminPage() {
 
       {/* Merge modal */}
       {mergeUser && (
-        <Modal title={`合并用户: ${mergeUser.name}`} onClose={closeAll}>
+        <Modal title={`合并用户`} onClose={closeAll}>
           <div className="space-y-3">
-            <div className="bg-purple-50 rounded-lg p-3 text-sm text-purple-700">
-              <p>
-                将 <strong>{mergeUser.name}</strong> 的所有学习数据合并到另一个用户，
-                然后删除 <strong>{mergeUser.name}</strong>。
+            {/* Source user (to be deleted) */}
+            <div className="bg-red-50 rounded-lg p-3 text-sm">
+              <p className="text-red-700">
+                <strong>将被删除</strong> — {mergeUser.name}
+                <span className="text-red-500 ml-1">({mergeUser.email})</span>
               </p>
-              <p className="mt-1 text-xs text-purple-500">
-                打卡 {mergeUser.totalDays} 天 · 连续 {mergeUser.streakDays} 天 · {mergeUser.planCount} 条计划
+              <p className="text-xs text-red-400 mt-0.5">
+                此用户的所有学习数据将转移给目标用户，该账号将被删除
               </p>
             </div>
-            <label className="block text-sm text-gray-600">合并到哪个用户？</label>
+
+            <div className="text-center text-gray-400 text-lg">⬇ 合并到 ⬇</div>
+
+            <label className="block text-sm text-gray-600 font-medium">目标用户（保留此账号）</label>
             <select
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
               value={mergeTargetId ?? ""}
@@ -502,12 +506,18 @@ export default function AdminPage() {
                   </option>
                 ))}
             </select>
+
             {mergeTargetId && (() => {
               const target = users.find((u) => u.id === mergeTargetId);
               return target ? (
-                <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
-                  <p>目标用户 <strong>{target.name}</strong> 当前数据：</p>
-                  <p className="text-xs mt-0.5">打卡 {target.totalDays} 天 · 连续 {target.streakDays} 天 · {target.planCount} 条计划</p>
+                <div className="bg-green-50 rounded-lg p-3 text-sm">
+                  <p className="text-green-700">
+                    <strong>合并后保留</strong> — {target.name}
+                    <span className="text-green-500 ml-1">({target.email})</span>
+                  </p>
+                  <p className="text-xs text-green-500 mt-1">
+                    登录邮箱 <strong>{target.email}</strong>，密码不变 · 打卡 {target.totalDays} 天 · 连续 {target.streakDays} 天
+                  </p>
                 </div>
               ) : null;
             })()}

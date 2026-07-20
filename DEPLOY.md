@@ -10,6 +10,28 @@
 
 ---
 
+## 零、本地测试
+
+在部署到服务器之前，先在本地跑起来看看效果：
+
+```bash
+# 1. 安装依赖
+npm install
+
+# 2. 生成 Prisma Client
+npx prisma generate
+
+# 3. 初始化数据库（SQLite，自动创建 dev.db）
+npx prisma db push
+
+# 4. 启动开发服务器
+npm run dev
+```
+
+启动后访问 http://localhost:3000
+
+---
+
 ## 一、购买并初始化服务器
 
 1. 打开 [腾讯云控制台](https://console.cloud.tencent.com/)，搜索「轻量应用服务器」
